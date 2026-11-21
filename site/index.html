@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rodízio de Streaming</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Space+Mono:wght@400;700&family=Unbounded:wght@600;800;900&display=swap">
+<style>
+/* Layout: faixa de topo + duas colunas (escolhas | resumo fixo) que viram uma no celular;
+   o resultado vem embaixo como uma tira de "ingressos" mensais. */
+:root {
+  --bg: #F1EDFF;        /* papel lilás */
+  --card: #FFFFFF;
+  --ink: #17112E;       /* contorno e texto */
+  --muted: #5B5378;
+  --pop: #FF2E93;       /* rosa choque: ação principal */
+  --sun: #FFE14A;       /* amarelo: seleção */
+  --mint: #2FD08C;      /* economia / ok */
+  --sky: #7C6BFF;
+  --warn: #FF7A1A;
+  --shadow: #17112E;
+  --soft: #E4DDFF;
+  --on-pop: #FFFFFF;
+  --on-sun: #17112E;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --b: 2.5px solid var(--ink);
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #120D26; --card: #1F1840; --ink: #F4F0FF; --muted: #B5AAD9; --pop: #FF4FA6;
+    --sun: #FFE14A; --mint: #3BE29B; --sky: #9A8CFF; --warn: #FF9A4D; --shadow: #8E7DFF;
+    --soft: #2C2357; --on-pop: #FFFFFF; --on-sun: #17112E; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #120D26; --card: #1F1840; --ink: #F4F0FF; --muted: #B5AAD9; --pop: #FF4FA6;
+  --sun: #FFE14A; --mint: #3BE29B; --sky: #9A8CFF; --warn: #FF9A4D; --shadow: #8E7DFF;
+  --soft: #2C2357; --on-pop: #FFFFFF; --on-sun: #17112E; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.5 var(--body);
+  background-image: radial-gradient(var(--soft) 1.2px, transparent 1.3px);
+  background-size: 22px 22px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); line-height: 1.05; margin: 0; text-wrap: balance; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--pop); outline-offset: 2px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- topo */
+.top { padding-block: 20px 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
+.logo-mark { width: 38px; height: 38px; border: var(--b); border-radius: 50%; background: conic-gradient(#E50914 0 60deg, #6A2BF5 0 120deg, #00A8E1 0 180deg, #113CCF 0 240deg, #FF5A1F 0 300deg, #1d1d1f 0); box-shadow: 3px 3px 0 var(--shadow); animation: gira 14s linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+.top-tag { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; border: var(--b); border-radius: 999px; padding: 4px 12px; background: var(--card); }
+
+.hero { padding-block: 26px 30px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; align-items: end; }
+.hero h1 { font-size: clamp(38px, 7vw, 86px); font-weight: 900; letter-spacing: -0.035em; }
+.hero h1 .riscado { position: relative; white-space: nowrap; }
+.hero h1 .riscado::after { content: ""; position: absolute; left: -4px; right: -4px; top: 52%; height: .14em; background: var(--pop); transform: rotate(-3deg); border-radius: 4px; }
+.hero h1 em { font-style: normal; background: var(--sun); color: var(--on-sun); padding: 0 .12em; border: var(--b); border-radius: 12px; display: inline-block; transform: rotate(-2deg); box-shadow: 5px 5px 0 var(--shadow); }
+.hero p { font-size: 19px; max-width: 34ch; margin: 0; }
+.hero-card { border: var(--b); border-radius: var(--r); background: var(--card); box-shadow: 6px 6px 0 var(--shadow); padding: 18px 20px; transform: rotate(1.2deg); }
+.hero-card small { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.hero-card .big { font-family: var(--display); font-weight: 900; font-size: 40px; color: var(--pop); line-height: 1.1; }
+.hero-card p { font-size: 15px; margin-top: 6px; max-width: none; }
+
+/* ---------- layout principal */
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 26px; align-items: start; padding-block: 4px 40px; }
+.passos { display: grid; gap: 26px; min-width: 0; }
+.passo { border: var(--b); border-radius: 22px; background: var(--card); box-shadow: 6px 6px 0 var(--shadow); padding: 22px; min-width: 0; }
+.passo-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.passo-n { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: var(--b); border-radius: 50%; font-family: var(--display); font-weight: 900; font-size: 20px; background: var(--sun); color: var(--on-sun); }
+.passo:nth-child(2) .passo-n { background: var(--mint); color: var(--on-sun); }
+.passo:nth-child(3) .passo-n { background: var(--sky); color: #fff; }
+.passo-head h2 { font-size: clamp(20px, 2.6vw, 27px); font-weight: 800; }
+.passo-head p { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+
+/* chips e botões */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: var(--b); border-radius: 999px; padding: 6px 14px; background: var(--card); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 7px; transition: transform .12s, box-shadow .12s; }
+.chip:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--shadow); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--ink); flex: none; }
+.btn { border: var(--b); border-radius: 12px; padding: 9px 16px; background: var(--card); font-weight: 800; box-shadow: 3px 3px 0 var(--shadow); transition: transform .1s, box-shadow .1s; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--shadow); }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
+.btn.pop { background: var(--pop); color: var(--on-pop); }
+.btn.sun { background: var(--sun); color: var(--on-sun); }
+.btn.ghost { box-shadow: none; background: transparent; }
+.btn[disabled] { opacity: .5; cursor: wait; }
+.barra-ferr { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.busca { flex: 1 1 220px; min-width: 0; border: var(--b); border-radius: 12px; padding: 9px 14px; background: var(--bg); }
+
+/* grade de títulos */
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin-top: 14px; max-height: 560px; overflow-y: auto; padding: 4px 8px 10px 4px; }
+.tit { position: relative; text-align: left; border: var(--b); border-radius: 14px; background: var(--card); padding: 0 12px 12px; display: flex; flex-direction: column; gap: 6px; min-height: 118px; overflow: hidden; transition: transform .12s, box-shadow .12s, background .12s; }
+.tit:hover { transform: translate(-2px, -2px) rotate(-.6deg); box-shadow: 4px 4px 0 var(--shadow); }
+.tit-faixa { height: 10px; margin: 0 -12px 4px; display: flex; }
+.tit-faixa span { flex: 1; }
+.tit b { font-size: 15px; line-height: 1.2; font-weight: 800; }
+.tit .meta { margin-top: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.tag { font-family: var(--mono); font-size: 11px; border: 1.5px solid var(--ink); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+.tit .nota { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.tit[aria-pressed="true"] { background: var(--sun); color: var(--on-sun); box-shadow: 4px 4px 0 var(--shadow); }
+.tit[aria-pressed="true"] .nota { color: inherit; opacity: .75; }
+.tit[aria-pressed="true"] .tag { border-color: var(--on-sun); }
+.tit .check { position: absolute; top: 16px; right: 8px; width: 26px; height: 26px; border: var(--b); border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 14px; background: var(--card); color: transparent; transition: transform .2s; }
+.tit[aria-pressed="true"] .check { background: var(--pop); color: #fff; border-color: var(--on-sun); transform: rotate(-12deg) scale(1.1); }
+.tit b { padding-right: 26px; }
+
+/* formulário de título próprio */
+details.novo { margin-top: 16px; border: 2px dashed var(--ink); border-radius: 14px; padding: 12px 14px; }
+details.novo summary { cursor: pointer; font-weight: 800; }
+.form-novo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; align-items: end; }
+.campo { display: grid; gap: 4px; font-size: 13px; font-weight: 600; min-width: 0; }
+.campo input, .campo select { border: var(--b); border-radius: 10px; padding: 8px 10px; background: var(--bg); width: 100%; min-width: 0; }
+.form-novo .plats { grid-column: 1 / -1; }
+.form-erro { grid-column: 1 / -1; color: var(--warn); font-weight: 700; font-size: 14px; margin: 0; }
+
+/* horas livres */
+.perfis { margin-bottom: 14px; }
+.horas-grade { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
+.mes-col { display: grid; gap: 6px; justify-items: center; }
+.mes-col .val { font-family: var(--mono); font-weight: 700; font-size: 14px; }
+.mes-col .nome { font-family: var(--mono); font-size: 12px; text-transform: uppercase; color: var(--muted); }
+.barra-h { position: relative; width: 100%; height: 170px; border: var(--b); border-radius: 12px; background: var(--bg); overflow: hidden; touch-action: none; cursor: ns-resize; }
+.barra-h .fill { position: absolute; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(-45deg, var(--mint) 0 8px, color-mix(in srgb, var(--mint) 78%, #000) 8px 10px); border-top: var(--b); transition: height .08s; }
+.barra-h:focus-visible { outline-offset: 3px; }
+.horas-rodape { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+.mesmo { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; }
+.mesmo input { width: 72px; border: var(--b); border-radius: 10px; padding: 6px 8px; background: var(--bg); }
+.balanco { font-size: 14px; border: var(--b); border-radius: 999px; padding: 6px 14px; font-weight: 700; }
+.balanco.ok { background: var(--mint); color: var(--on-sun); }
+.balanco.ruim { background: var(--warn); color: var(--on-sun); }
+
+/* preferências */
+.prefs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.toggle { display: flex; gap: 12px; align-items: flex-start; border: var(--b); border-radius: 14px; padding: 12px 14px; cursor: pointer; background: var(--bg); }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle .sw { flex: none; width: 46px; height: 26px; border: var(--b); border-radius: 999px; background: var(--card); position: relative; transition: background .15s; margin-top: 2px; }
+.toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--ink); transition: transform .18s cubic-bezier(.3, 1.6, .5, 1); }
+.toggle input:checked + .sw { background: var(--pop); }
+.toggle input:checked + .sw::after { transform: translateX(20px); background: #fff; }
+.toggle input:focus-visible + .sw { outline: 3px solid var(--pop); outline-offset: 2px; }
+.toggle b { display: block; font-size: 15px; }
+.toggle small { color: var(--muted); font-size: 13px; line-height: 1.35; display: block; }
+.ja-tenho { margin-top: 16px; }
+.ja-tenho h3, details.precos summary { font-family: var(--body); font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+details.precos { margin-top: 16px; }
+details.precos summary { cursor: pointer; }
+.tabela-precos { overflow-x: auto; margin-top: 10px; }
+.tabela-precos table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tabela-precos td { padding: 5px 8px; border-bottom: 1.5px dashed var(--soft); }
+.tabela-precos input { width: 90px; border: 2px solid var(--ink); border-radius: 8px; padding: 3px 6px; background: var(--bg); text-align: right; }
+
+/* resumo lateral */
+.lado { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
+.cesta { border: var(--b); border-radius: 22px; background: var(--ink); color: var(--bg); padding: 18px; box-shadow: 6px 6px 0 var(--pop); }
+.cesta h3 { font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cesta h3 .num { font-size: 13px; font-weight: 400; opacity: .8; }
+.cesta ul { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
+.cesta li { display: flex; align-items: center; gap: 8px; font-size: 14px; background: color-mix(in srgb, var(--bg) 9%, transparent); border-radius: 10px; padding: 5px 6px 5px 10px; }
+.cesta li span.n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cesta li input { width: 46px; border: 1.5px solid var(--bg); border-radius: 7px; background: transparent; color: var(--bg); text-align: right; padding: 1px 4px; font-family: var(--mono); font-size: 13px; }
+.cesta li button { border: 0; background: none; color: var(--bg); opacity: .7; font-size: 18px; line-height: 1; padding: 0 4px; }
+.cesta li button:hover { opacity: 1; color: var(--pop); }
+.cesta .vazia { opacity: .75; font-size: 14px; margin: 12px 0; }
+.cesta .btn { width: 100%; justify-content: center; font-size: 17px; padding: 13px; box-shadow: 4px 4px 0 var(--sun); border-color: var(--bg); }
+.cesta .aviso-solver { font-size: 12px; opacity: .7; margin: 10px 0 0; font-family: var(--mono); }
+
+/* ---------- resultado */
+#resultado { padding-block: 10px 40px; scroll-margin-top: 16px; }
+.res-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.res-head h2 { font-size: clamp(30px, 5vw, 56px); font-weight: 900; letter-spacing: -0.03em; }
+.status { font-family: var(--mono); font-size: 13px; border: var(--b); border-radius: 999px; padding: 5px 12px; background: var(--card); display: inline-flex; gap: 8px; align-items: center; }
+.status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--mint); border: 1.5px solid var(--ink); }
+.status.tempo::before { background: var(--sun); }
+.res-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.placar { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; margin-bottom: 26px; }
+.total { border: var(--b); border-radius: 22px; background: var(--pop); color: var(--on-pop); padding: 22px 24px; box-shadow: 7px 7px 0 var(--shadow); display: grid; gap: 14px; align-content: start; }
+.total small { font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
+.total .valor { font-family: var(--display); font-weight: 900; font-size: clamp(44px, 7vw, 76px); line-height: .95; letter-spacing: -0.03em; }
+.total .mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.total .mini div { border: 2px solid var(--on-pop); border-radius: 12px; padding: 8px 10px; }
+.total .mini b { display: block; font-family: var(--mono); font-size: 17px; }
+.total .mini span { font-size: 12px; opacity: .9; }
+.selo { justify-self: start; background: var(--sun); color: var(--on-sun); border: var(--b); border-color: var(--ink); border-radius: 12px; padding: 6px 12px; font-weight: 800; transform: rotate(-2deg); box-shadow: 3px 3px 0 var(--ink); }
+
+.compara { border: var(--b); border-radius: 22px; background: var(--card); padding: 20px 22px; box-shadow: 7px 7px 0 var(--shadow); min-width: 0; }
+.compara h3 { font-size: 17px; margin-bottom: 14px; }
+.cbar { display: grid; gap: 4px; margin-bottom: 12px; }
+.cbar .rot { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 600; }
+.cbar .trilho { height: 22px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.cbar .enche { height: 100%; background: var(--soft); border-right: 2px solid var(--ink); transition: width .8s cubic-bezier(.2, .9, .3, 1); }
+.cbar.voce .enche { background: var(--mint); }
+.compara p { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+
+.pulados { border: var(--b); border-radius: 18px; background: var(--warn); color: var(--on-sun); padding: 16px 20px; margin-bottom: 26px; box-shadow: 5px 5px 0 var(--shadow); }
+.pulados b { font-family: var(--display); font-size: 17px; }
+.pulados p { margin: 6px 0 0; }
+
+.bloco-t { font-size: 22px; font-weight: 800; margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bloco-t small { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--muted); }
+
+/* linha do tempo */
+.linha-wrap { border: var(--b); border-radius: 22px; background: var(--card); padding: 18px; box-shadow: 6px 6px 0 var(--shadow); margin-bottom: 30px; overflow-x: auto; }
+.linha { display: grid; grid-template-columns: 120px repeat(12, minmax(34px, 1fr)); gap: 4px; min-width: 560px; align-items: center; }
+.linha .cab { font-family: var(--mono); font-size: 11px; text-transform: uppercase; text-align: center; color: var(--muted); }
+.linha .pl { font-weight: 800; font-size: 14px; display: flex; gap: 6px; align-items: center; white-space: nowrap; overflow: hidden; }
+.linha .cel { height: 30px; border-radius: 7px; background: var(--bg); border: 1.5px dashed var(--soft); }
+.linha .cel.on { border: 2px solid var(--ink); animation: pinta .4s backwards; }
+.linha .cel.on.grudado-e { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.linha .cel.on.grudado-d { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.linha .gasto { font-family: var(--mono); font-size: 11px; text-align: center; font-weight: 700; }
+@keyframes pinta { from { transform: scaleY(0); } }
+
+/* ingressos */
+.ingressos { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; }
+.ing { border: var(--b); border-radius: 18px; background: var(--card); box-shadow: 5px 5px 0 var(--shadow); display: flex; flex-direction: column; min-width: 0; animation: entra .45s backwards; }
+@keyframes entra { from { transform: translateY(14px) rotate(-1deg); } }
+.ing-top { padding: 14px 16px 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border-bottom: 2.5px dashed var(--ink); position: relative; }
+.ing-top::before, .ing-top::after { content: ""; position: absolute; bottom: -11px; width: 20px; height: 20px; border-radius: 50%; background: var(--bg); border: var(--b); }
+.ing-top::before { left: -12px; clip-path: inset(0 0 0 50%); }
+.ing-top::after { right: -12px; clip-path: inset(0 50% 0 0); }
+.ing-top h3 { font-size: 21px; font-weight: 800; }
+.ing-top .preco { font-family: var(--mono); font-weight: 700; font-size: 17px; }
+.ing-corpo { padding: 14px 16px 16px; display: grid; gap: 12px; flex: 1; align-content: start; }
+.ofs { display: grid; gap: 6px; }
+.of { display: flex; align-items: center; gap: 8px; border-radius: 10px; padding: 6px 10px; font-weight: 700; font-size: 14px; border: 2px solid var(--ink); flex-wrap: wrap; }
+.of .acao { margin-left: auto; font-family: var(--mono); font-size: 10.5px; font-weight: 400; text-transform: uppercase; letter-spacing: .03em; background: rgba(255,255,255,.88); color: #17112E; border-radius: 5px; padding: 1px 6px; }
+.assistir { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.assistir li label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; padding: 3px 0; }
+.assistir input { accent-color: var(--pop); width: 17px; height: 17px; margin: 2px 0 0; flex: none; }
+.assistir li .h { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.assistir li.feito .t { text-decoration: line-through; opacity: .55; }
+.uso { display: grid; gap: 4px; margin-top: auto; }
+.uso .trilho { height: 12px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--bg); }
+.uso .trilho div { height: 100%; background: var(--sky); }
+.uso span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.ing.folga { background: transparent; box-shadow: none; border-style: dashed; }
+.ing.folga .ing-corpo { color: var(--muted); }
+.ing.folga .ing-top::before, .ing.folga .ing-top::after { border-style: dashed; }
+.folga-txt { font-family: var(--display); font-weight: 800; font-size: 17px; color: var(--ink); opacity: .55; }
+
+/* como funciona */
+.como { border: var(--b); border-radius: 22px; background: var(--card); padding: 22px; margin-block: 10px 40px; box-shadow: 6px 6px 0 var(--shadow); }
+.como h2 { font-size: 24px; margin-bottom: 12px; }
+.como-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+.como-grade div { min-width: 0; }
+.como-grade h3 { font-family: var(--body); font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+.como-grade p { margin: 0; font-size: 15px; color: var(--muted); max-width: 60ch; }
+.como code { font-family: var(--mono); font-size: 13px; background: var(--soft); padding: 1px 5px; border-radius: 5px; }
+footer { padding-block: 0 40px; font-size: 13px; color: var(--muted); }
+footer a { color: inherit; }
+
+/* carregando */
+.carregando { position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 20px; }
+.carregando-box { border: var(--b); border-radius: 22px; background: var(--card); box-shadow: 8px 8px 0 var(--pop); padding: 26px 30px; text-align: center; max-width: 380px; display: grid; gap: 14px; justify-items: center; }
+.carregando-box b { font-family: var(--display); font-size: 20px; }
+.carregando-box p { margin: 0; color: var(--muted); font-size: 14px; }
+.eq { display: flex; gap: 6px; height: 46px; align-items: end; }
+.eq span { width: 12px; height: 100%; border: 2px solid var(--ink); border-radius: 4px; transform-origin: bottom; animation: eq .9s ease-in-out infinite; }
+.eq span:nth-child(1) { background: #E50914; }
+.eq span:nth-child(2) { background: #6A2BF5; animation-delay: -.2s; }
+.eq span:nth-child(3) { background: #00A8E1; animation-delay: -.4s; }
+.eq span:nth-child(4) { background: #113CCF; animation-delay: -.6s; }
+.eq span:nth-child(5) { background: #FF5A1F; animation-delay: -.8s; }
+@keyframes eq { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; background: var(--ink); color: var(--bg); border-radius: 12px; padding: 10px 18px; font-weight: 700; box-shadow: 4px 4px 0 var(--pop); }
+
+/* barra fixa no celular */
+.barra-movel { display: none; }
+
+@media (max-width: 980px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .lado { position: static; }
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .placar { grid-template-columns: minmax(0, 1fr); }
+  .barra-movel { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; gap: 10px; align-items: center; justify-content: space-between; background: var(--ink); color: var(--bg); padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-top: 3px solid var(--pop); }
+  .barra-movel .btn { border-color: var(--bg); box-shadow: 3px 3px 0 var(--sun); }
+  body { padding-bottom: 76px; }
+}
+@media (max-width: 640px) {
+  .horas-grade { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 14px; }
+  .barra-h { height: 120px; }
+  .passo { padding: 16px; }
+  .total .mini { grid-template-columns: minmax(0, 1fr); }
+  .grade { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><span class="logo-mark" aria-hidden="true"></span>rodízio</div>
+    <span class="top-tag">calendário de streaming · 2027</span>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Assina, maratona, <span class="riscado">esquece</span> <em>cancela.</em></h1>
+    </div>
+    <div class="hero-card">
+      <small>ter todas as 6 plataformas, todo mês</small>
+      <div class="big num" id="hero-tudo">R$ 1.496,40/ano</div>
+      <p>Streaming não tem fidelidade. Escolha o que quer ver, diga quanto tempo livre tem e a gente calcula quais assinaturas manter em cada mês de 2027 para ver tudo pagando o mínimo.</p>
+    </div>
+  </section>
+
+  <main class="main">
+    <div class="passos">
+      <!-- PASSO 1 -->
+      <section class="passo" aria-labelledby="p1">
+        <div class="passo-head">
+          <span class="passo-n">1</span>
+          <div><h2 id="p1">O que você quer ver?</h2><p>Toque nas séries e filmes. Dá para adicionar qualquer outro título.</p></div>
+        </div>
+        <div class="barra-ferr">
+          <input class="busca" id="busca" type="search" placeholder="Buscar título ou gênero…" autocomplete="off">
+          <button class="btn sun" id="usar-projeto" type="button">Usar a lista de exemplo</button>
+          <button class="btn ghost" id="limpar" type="button">Limpar</button>
+        </div>
+        <div class="chips" id="filtros" role="group" aria-label="Filtrar por plataforma"></div>
+        <div class="grade" id="grade"></div>
+
+        <details class="novo" id="novo">
+          <summary>+ Adicionar um título que não está aqui</summary>
+          <form class="form-novo" id="form-novo">
+            <label class="campo">Nome<input id="n-nome" required placeholder="Ex.: Doctor Who T15"></label>
+            <label class="campo">Horas para ver tudo<input id="n-horas" type="number" min="0.5" step="0.5" value="8" required></label>
+            <label class="campo">Disponível a partir de<select id="n-de"></select></label>
+            <label class="campo">Até<select id="n-ate"></select></label>
+            <div class="campo plats"><span>Em qual plataforma? (pode marcar mais de uma)</span><div class="chips" id="n-plats"></div></div>
+            <p class="form-erro" id="n-erro" hidden></p>
+            <button class="btn pop" type="submit">Adicionar à lista</button>
+          </form>
+        </details>
+      </section>
+
+      <!-- PASSO 2 -->
+      <section class="passo" aria-labelledby="p2">
+        <div class="passo-head">
+          <span class="passo-n">2</span>
+          <div><h2 id="p2">Quanto tempo livre por mês?</h2><p>Horas que você pode passar vendo streaming. Arraste as barras ou escolha um perfil.</p></div>
+        </div>
+        <div class="chips perfis" id="perfis"></div>
+        <div class="horas-grade" id="horas"></div>
+        <div class="horas-rodape">
+          <label class="mesmo">Mesmo valor todo mês: <input type="number" id="mesmo" min="0" max="200" placeholder="h"> <button class="btn" type="button" id="aplicar-mesmo">Aplicar</button></label>
+          <span class="balanco" id="balanco"></span>
+        </div>
+      </section>
+
+      <!-- PASSO 3 -->
+      <section class="passo" aria-labelledby="p3">
+        <div class="passo-head">
+          <span class="passo-n">3</span>
+          <div><h2 id="p3">Do seu jeito</h2><p>Preferências que mudam quais planos entram na conta.</p></div>
+        </div>
+        <div class="prefs">
+          <label class="toggle"><input type="checkbox" id="o-anuncios" checked><span class="sw"></span><span><b>Topo ver anúncios</b><small>Planos com anúncios são bem mais baratos. Desligue para usar só planos sem anúncios.</small></span></label>
+          <label class="toggle"><input type="checkbox" id="o-combo" checked><span class="sw"></span><span><b>Pode usar combos</b><small>Meli+ Mega junta Netflix, HBO Max, Disney+ e Apple TV num plano só.</small></span></label>
+          <label class="toggle"><input type="checkbox" id="o-dividir"><span class="sw"></span><span><b>Posso ver uma série em mais de um mês</b><small>Ajuda quando sobra pouco tempo ou a série é longa. Desligado, cada título fica inteiro num mês.</small></span></label>
+        </div>
+        <div class="ja-tenho">
+          <h3>Já tenho de graça (ex.: vem no plano do celular)</h3>
+          <div class="chips" id="ja-tenho"></div>
+        </div>
+        <details class="precos">
+          <summary>Ver ou editar os preços (consultados em nov/2026)</summary>
+          <div class="tabela-precos"><table id="precos"></table></div>
+        </details>
+      </section>
+    </div>
+
+    <aside class="lado">
+      <div class="cesta">
+        <h3>Sua lista <span class="num" id="cesta-tot"></span></h3>
+        <ul id="cesta"></ul>
+        <p class="vazia" id="cesta-vazia">Nenhum título ainda. Escolha no passo 1.</p>
+        <button class="btn pop" id="calcular" type="button">Montar meu cronograma</button>
+        <p class="aviso-solver" id="aviso-solver">carregando o solver…</p>
+      </div>
+    </aside>
+  </main>
+
+  <section id="resultado" hidden aria-live="polite"></section>
+
+  <section class="como">
+    <h2>Como a conta é feita</h2>
+    <div class="como-grade">
+      <div><h3>Um problema de otimização de verdade</h3><p>Seu pedido vira um programa linear inteiro: para cada mês e cada plano, o modelo decide se você assina (sim ou não) e em qual mês você vê cada título. O objetivo é pagar o mínimo de mensalidades.</p></div>
+      <div><h3>As regras</h3><p>Cada título é visto uma vez, num mês em que está disponível. O que você vê no mês cabe nas suas horas livres. E só dá para ver um título no mês em que alguma assinatura ativa dá acesso a ele.</p></div>
+      <div><h3>Quem resolve</h3><p>O <code>HiGHS</code>, um solver de código aberto, roda aqui no seu navegador. Ele usa <em>branch-and-bound</em> e planos de corte para provar que não existe plano mais barato. Nada do que você escolhe sai do seu computador.</p></div>
+      <div><h3>De onde veio</h3><p>Do projeto final de Otimização (COS360, UFRJ): "Rodízio de assinaturas de streaming". Os preços são de novembro de 2026; datas de lançamento de 2027 são estimativas e as horas são aproximadas.</p></div>
+    </div>
+  </section>
+
+  <footer>Preços mensais consultados em 18/11/2026 (ANTI/HYPE, Oficina da Net; Meli+ Mega: Canaltech, mai/2026). Assinatura considerada do dia 1 ao fim do mês, sem multa para cancelar. Confira os preços antes de assinar.</footer>
+</div>
+
+<div class="barra-movel">
+  <span id="movel-info" class="num">0 títulos</span>
+  <button class="btn pop" id="calcular-movel" type="button">Montar cronograma</button>
+</div>
+
+<div class="carregando" id="carregando" hidden>
+  <div class="carregando-box">
+    <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    <b id="carregando-t">Testando combinações…</b>
+    <p id="carregando-p">O solver está comparando milhares de jeitos de montar o seu ano.</p>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="catalogo.js"></script>
+<script src="otimizador.js"></script>
+<script src="vendor/highs.js"></script>
+<script>
+(() => {
+  "use strict";
+  const { PLATAFORMAS, OFERTAS, CATALOGO, NOMES_MESES, MESES_LONGOS, PERFIS } = window.Dados;
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, attrs = {}, ...filhos) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") e.className = v;
+      else if (k === "style") e.style.cssText = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const f of filhos.flat()) if (f != null && f !== false) e.append(f.nodeType ? f : document.createTextNode(f));
+    return e;
+  };
+  const brl = (v) => "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const fmtH = (h) => (Math.round(h * 10) / 10).toString().replace(".", ",") + " h";
+  const cor = (p) => (PLATAFORMAS[p] || { cor: "#888", tinta: "#fff" });
+
+  // ------------------------------------------------------------ estado
+  const PADRAO = {
+    selecionados: CATALOGO.filter((t) => t.projeto).map((t) => t.id),
+    proprios: [],
+    horasEditadas: {},
+    horas: PERFIS.estudante.horas.slice(),
+    anuncios: true, combo: true, dividir: false,
+    jaTenho: [],
+    precos: {},
+    feitos: {},
+  };
+  let estado;
+  try { estado = Object.assign(structuredClone(PADRAO), JSON.parse(localStorage.getItem("rodizio-v1") || "{}")); }
+  catch { estado = structuredClone(PADRAO); }
+  const salvar = () => { try { localStorage.setItem("rodizio-v1", JSON.stringify(estado)); } catch {} };
+
+  let filtroPlat = null, busca = "";
+  const todos = () => [...CATALOGO, ...estado.proprios];
+  const porId = (id) => todos().find((t) => t.id === id);
+  const horasDe = (t) => estado.horasEditadas[t.id] ?? t.horas;
+  const selecionados = () => estado.selecionados.map(porId).filter(Boolean);
+
+  // ------------------------------------------------------------ passo 1: títulos
+  function desenharFiltros() {
+    const f = $("#filtros");
+    f.replaceChildren(
+      el("button", { class: "chip", type: "button", "aria-pressed": String(filtroPlat === null), onclick: () => { filtroPlat = null; desenharFiltros(); desenharGrade(); } }, "Todas"),
+      ...Object.keys(PLATAFORMAS).map((p) =>
+        el("button", { class: "chip", type: "button", "aria-pressed": String(filtroPlat === p), onclick: () => { filtroPlat = filtroPlat === p ? null : p; desenharFiltros(); desenharGrade(); } },
+          el("span", { class: "dot", style: `background:${cor(p).cor}` }), p))
+    );
+  }
+
+  function janelaTxt(t) {
+    const de = Math.min(...t.disp.map((d) => d.de)), ate = Math.max(...t.disp.map((d) => d.ate));
+    if (de === 1 && ate === 12) return null;
+    return de === ate ? `só ${NOMES_MESES[de - 1]}` : `${NOMES_MESES[de - 1]}–${NOMES_MESES[ate - 1]}`;
+  }
+
+  function desenharGrade() {
+    const g = $("#grade");
+    const q = busca.trim().toLowerCase();
+    const lista = todos().filter((t) =>
+      (!filtroPlat || t.disp.some((d) => d.plataforma === filtroPlat)) &&
+      (!q || t.nome.toLowerCase().includes(q) || (t.genero || "").includes(q)));
+    g.replaceChildren(...lista.map((t) => {
+      const plats = [...new Set(t.disp.map((d) => d.plataforma))];
+      const sel = estado.selecionados.includes(t.id);
+      const jan = janelaTxt(t);
+      return el("button", { class: "tit", type: "button", "aria-pressed": String(sel), onclick: () => alternar(t.id) },
+        el("span", { class: "tit-faixa", "aria-hidden": "true" }, plats.map((p) => el("span", { style: `background:${cor(p).cor}` }))),
+        el("span", { class: "check", "aria-hidden": "true" }, "✓"),
+        el("b", {}, t.nome),
+        t.nota ? el("span", { class: "nota" }, t.nota) : null,
+        el("span", { class: "meta" },
+          el("span", { class: "tag" }, fmtH(horasDe(t))),
+          el("span", { class: "tag" }, plats.join(" + ")),
+          jan ? el("span", { class: "tag" }, jan) : null,
+          t.proprio ? el("span", { class: "tag" }, "seu") : null));
+    }));
+    if (!lista.length) g.append(el("p", {}, "Nada encontrado. Adicione o título logo abaixo."));
+  }
+
+  function alternar(id) {
+    const i = estado.selecionados.indexOf(id);
+    if (i >= 0) estado.selecionados.splice(i, 1); else estado.selecionados.push(id);
+    salvar(); desenharGrade(); desenharCesta(); desenharBalanco();
+  }
+
+  function desenharCesta() {
+    const sel = selecionados();
+    const ul = $("#cesta");
+    ul.replaceChildren(...sel.map((t) => {
+      const plats = [...new Set(t.disp.map((d) => d.plataforma))];
+      const input = el("input", { type: "number", min: "0.5", step: "0.5", value: horasDe(t), "aria-label": `Horas de ${t.nome}`, title: "horas" });
+      input.addEventListener("change", () => {
+        const v = parseFloat(input.value);
+        if (v > 0) { estado.horasEditadas[t.id] = v; salvar(); desenharGrade(); desenharBalanco(); desenharTotCesta(); }
+      });
+      return el("li", {},
+        el("span", { class: "dot", style: `background:${cor(plats[0]).cor}` }),
+        el("span", { class: "n", title: t.nome }, t.nome), input, el("span", { class: "num", style: "font-size:12px" }, "h"),
+        el("button", { type: "button", "aria-label": `Tirar ${t.nome}`, onclick: () => alternar(t.id) }, "×"));
+    }));
+    $("#cesta-vazia").hidden = sel.length > 0;
+    desenharTotCesta();
+  }
+  function desenharTotCesta() {
+    const sel = selecionados();
+    const h = sel.reduce((a, t) => a + horasDe(t), 0);
+    $("#cesta-tot").textContent = `${sel.length} títulos · ${fmtH(h)}`;
+    $("#movel-info").textContent = `${sel.length} títulos · ${fmtH(h)}`;
+  }
+
+  // formulário de título próprio
+  function prepararForm() {
+    const opts = (sel) => NOMES_MESES.map((m, i) => el("option", { value: i + 1, selected: sel === i + 1 }, MESES_LONGOS[i]));
+    $("#n-de").replaceChildren(...opts(1));
+    $("#n-ate").replaceChildren(...opts(12));
+    const escolhidas = new Set();
+    $("#n-plats").replaceChildren(...Object.keys(PLATAFORMAS).map((p) => {
+      const b = el("button", { class: "chip", type: "button", "aria-pressed": "false" }, el("span", { class: "dot", style: `background:${cor(p).cor}` }), p);
+      b.addEventListener("click", () => { escolhidas.has(p) ? escolhidas.delete(p) : escolhidas.add(p); b.setAttribute("aria-pressed", String(escolhidas.has(p))); });
+      return b;
+    }));
+    $("#form-novo").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const nome = $("#n-nome").value.trim(), horas = parseFloat($("#n-horas").value);
+      const de = +$("#n-de").value, ate = +$("#n-ate").value;
+      const erro = $("#n-erro");
+      const msg = !nome ? "Dê um nome ao título." : !(horas > 0) ? "Informe quantas horas leva para ver." :
+        de > ate ? "O mês inicial precisa vir antes do final." : !escolhidas.size ? "Marque pelo menos uma plataforma." : "";
+      erro.hidden = !msg; erro.textContent = msg;
+      if (msg) return;
+      const t = { id: "meu-" + Date.now().toString(36), nome, horas, genero: "seu", nota: "adicionado por você", proprio: true,
+        disp: [...escolhidas].map((p) => ({ plataforma: p, de, ate })) };
+      estado.proprios.push(t); estado.selecionados.push(t.id); salvar();
+      $("#n-nome").value = ""; desenharGrade(); desenharCesta(); desenharBalanco();
+      aviso(`“${nome}” entrou na sua lista`);
+    });
+  }
+
+  // ------------------------------------------------------------ passo 2: horas
+  const HMAX = 80;
+  function desenharHoras() {
+    $("#perfis").replaceChildren(...Object.values(PERFIS).map((p) =>
+      el("button", { class: "chip", type: "button", onclick: () => { estado.horas = p.horas.slice(); salvar(); desenharHoras(); desenharBalanco(); } }, p.nome)));
+    $("#horas").replaceChildren(...estado.horas.map((h, i) => {
+      const val = el("span", { class: "val" }, String(h));
+      const fill = el("div", { class: "fill", style: `height:${Math.min(100, (h / HMAX) * 100)}%` });
+      const barra = el("div", { class: "barra-h", role: "slider", tabindex: "0", "aria-label": `Horas livres em ${MESES_LONGOS[i]}`,
+        "aria-valuemin": "0", "aria-valuemax": String(HMAX), "aria-valuenow": String(h) }, fill);
+      const setar = (v) => {
+        v = Math.max(0, Math.min(HMAX, Math.round(v)));
+        estado.horas[i] = v; val.textContent = v; fill.style.height = (v / HMAX) * 100 + "%";
+        barra.setAttribute("aria-valuenow", v); desenharBalanco();
+      };
+      const pelaPos = (ev) => { const r = barra.getBoundingClientRect(); setar(((r.bottom - ev.clientY) / r.height) * HMAX); };
+      barra.addEventListener("pointerdown", (ev) => { barra.setPointerCapture(ev.pointerId); pelaPos(ev); });
+      barra.addEventListener("pointermove", (ev) => { if (barra.hasPointerCapture(ev.pointerId)) pelaPos(ev); });
+      barra.addEventListener("pointerup", salvar);
+      barra.addEventListener("keydown", (ev) => {
+        const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 }[ev.key];
+        if (d) { ev.preventDefault(); setar(estado.horas[i] + d); salvar(); }
+      });
+      return el("div", { class: "mes-col" }, val, barra, el("span", { class: "nome" }, NOMES_MESES[i]));
+    }));
+  }
+  function desenharBalanco() {
+    const precisa = selecionados().reduce((a, t) => a + horasDe(t), 0);
+    const tem = estado.horas.reduce((a, b) => a + b, 0);
+    const b = $("#balanco");
+    b.className = "balanco " + (tem >= precisa ? "ok" : "ruim");
+    b.textContent = `Você tem ${fmtH(tem)} livres no ano e precisa de ${fmtH(precisa)}`;
+  }
+
+  // ------------------------------------------------------------ passo 3: preferências
+  function prepararPrefs() {
+    for (const k of ["anuncios", "combo", "dividir"]) {
+      const c = $("#o-" + k); c.checked = !!estado[k];
+      c.addEventListener("change", () => { estado[k] = c.checked; salvar(); });
+    }
+    const jt = $("#ja-tenho");
+    const desenharJT = () => jt.replaceChildren(...Object.keys(PLATAFORMAS).map((p) =>
+      el("button", { class: "chip", type: "button", "aria-pressed": String(estado.jaTenho.includes(p)),
+        onclick: () => { const i = estado.jaTenho.indexOf(p); i >= 0 ? estado.jaTenho.splice(i, 1) : estado.jaTenho.push(p); salvar(); desenharJT(); } },
+        el("span", { class: "dot", style: `background:${cor(p).cor}` }), p)));
+    desenharJT();
+    $("#precos").replaceChildren(...OFERTAS.map((o) => {
+      const inp = el("input", { type: "number", min: "0", step: "0.1", value: (estado.precos[o.id] ?? o.preco).toFixed(2), "aria-label": `Preço de ${o.nome}`, class: "num" });
+      inp.addEventListener("change", () => { const v = parseFloat(inp.value); if (v >= 0) { estado.precos[o.id] = v; salvar(); atualizarHero(); } });
+      return el("tr", {}, el("td", {}, o.nome), el("td", { style: "text-align:right" }, "R$ ", inp));
+    }));
+  }
+
+  function ofertasAtivas() {
+    const lista = OFERTAS
+      .filter((o) => estado.anuncios || !o.anuncios)
+      .filter((o) => estado.combo || !o.combo)
+      .map((o) => ({ ...o, preco: estado.precos[o.id] ?? o.preco }));
+    // plataforma que a pessoa já tem: vira uma oferta de R$ 0
+    for (const p of estado.jaTenho) lista.push({ id: "gratis-" + p, nome: `${p} (já tenho)`, plataformas: [p], preco: 0, anuncios: false, gratis: true });
+    return lista;
+  }
+
+  function atualizarHero() {
+    const titulos = CATALOGO.map((t) => t);
+    const r = Otimizador.assinarTudo({ titulos, ofertas: OFERTAS.map((o) => ({ ...o, preco: estado.precos[o.id] ?? o.preco })), horas: estado.horas });
+    $("#hero-tudo").textContent = brl(r.custo) + "/ano";
+  }
+
+  // ------------------------------------------------------------ solver
+  let solver = null;
+  const avisoSolver = (t) => ($("#aviso-solver").textContent = t);
+  async function carregarSolver() {
+    if (solver) return solver;
+    const CDN = "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/";
+    const locais = location.protocol.startsWith("http") ? ["vendor/", CDN] : [CDN];
+    for (const base of locais) {
+      try {
+        if (typeof window.Module !== "function") throw new Error("highs.js ausente");
+        solver = await window.Module({ locateFile: (f) => base + f });
+        solver.solve("Minimize\n obj: x\nSubject To\n c: x >= 0\nEnd"); // aquecimento / teste
+        avisoSolver("solver HiGHS pronto · roda no seu navegador");
+        return solver;
+      } catch (e) { solver = null; console.warn("HiGHS falhou em", base, e); }
+    }
+    // reserva: solver em JS puro (mais lento, mas sem WebAssembly)
+    await new Promise((ok, falha) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/javascript-lp-solver@0.4.24/prod/solver.js";
+      s.onload = ok; s.onerror = falha; document.head.append(s);
+    });
+    solver = { jsLP: window.solver };
+    avisoSolver("solver reserva (JavaScript) pronto");
+    return solver;
+  }
+
+  const FRASES = [
+    ["Testando combinações…", "O solver está comparando milhares de jeitos de montar o seu ano."],
+    ["Encaixando as maratonas…", "Juntando o que é da mesma plataforma no mesmo mês."],
+    ["Cortando mensalidades…", "Procurando o mês certo para cada assinatura."],
+  ];
+  async function calcular(ev, silencioso = false) {
+    const sel = selecionados();
+    if (!sel.length) { aviso("Escolha pelo menos um título no passo 1"); $("#p1").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const [t, p] = FRASES[Math.floor(Math.random() * FRASES.length)];
+    $("#carregando-t").textContent = t; $("#carregando-p").textContent = p;
+    if (silencioso) {
+      const res = $("#resultado"); res.hidden = false;
+      res.replaceChildren(el("div", { class: "carregando-box", style: "margin:0 auto" },
+        el("div", { class: "eq", "aria-hidden": "true" }, el("span"), el("span"), el("span"), el("span"), el("span")),
+        el("b", {}, "Montando o cronograma de exemplo…"), el("p", {}, "Com a lista e as horas que já estão preenchidas acima.")));
+    } else $("#carregando").hidden = false;
+    $("#calcular").disabled = $("#calcular-movel").disabled = true;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      const s = await carregarSolver();
+      const entrada = {
+        titulos: sel.map((t) => ({ ...t, horas: horasDe(t) })),
+        ofertas: ofertasAtivas(),
+        horas: estado.horas.slice(),
+        dividir: estado.dividir,
+      };
+      const r = await Otimizador.otimizar(s, entrada, 20);
+      const ref = { titulos: entrada.titulos, ofertas: OFERTAS.filter((o) => estado.anuncios || !o.anuncios).filter((o) => estado.combo || !o.combo).map((o) => ({ ...o, preco: estado.precos[o.id] ?? o.preco })), horas: entrada.horas };
+      const tudo = Otimizador.assinarTudo(ref);
+      const antes = Otimizador.oQuantoAntes(ref);
+      mostrarResultado(r, entrada, tudo, antes);
+    } catch (e) {
+      console.error(e);
+      mostrarErro("Não deu para carregar o solver. Confira a conexão com a internet e tente de novo.");
+    } finally {
+      $("#carregando").hidden = true;
+      $("#calcular").disabled = $("#calcular-movel").disabled = false;
+    }
+  }
+
+  // ------------------------------------------------------------ resultado
+  function mostrarErro(msg) {
+    const res = $("#resultado");
+    res.hidden = false;
+    res.replaceChildren(el("div", { class: "pulados" }, el("b", {}, "Ops"), el("p", {}, msg)));
+    res.scrollIntoView({ behavior: "smooth" });
+  }
+
+  let ultimoTexto = "";
+  function mostrarResultado(r, entrada, tudo, antes) {
+    const res = $("#resultado");
+    res.hidden = false;
+    if (!r.plano) {
+      const msg = r.status === "sem solução no tempo"
+        ? "O solver não achou um plano a tempo. Tente tirar alguns títulos ou ligar “Posso ver uma série em mais de um mês”."
+        : "Algo deu errado no cálculo (" + (r.erro || r.status) + "). Tente de novo.";
+      return mostrarErro(msg);
+    }
+    const horasVistas = r.plano.reduce((a, p) => a + p.horasUsadas, 0);
+    const economia = tudo.custo - r.custo;
+    const pct = tudo.custo > 0 ? economia / tudo.custo : 0;
+    const mesesPagos = r.plano.filter((p) => p.custo > 0).length;
+    const plats = [...new Set(entrada.titulos.flatMap((t) => t.disp.map((d) => d.plataforma)))];
+
+    // quais plataformas cada mês dá acesso (ofertas pagas ou "já tenho")
+    const acessoMes = r.plano.map((p) => new Set(p.ofertas.flatMap((o) => o.plataformas)));
+    const temOferta = (m, o) => m >= 1 && m <= 12 && r.plano[m - 1].ofertas.some((x) => x.id === o.id);
+
+    const cabecalho = el("div", { class: "res-head" },
+      el("div", {},
+        el("span", { class: "status" + (r.status === "ótimo" ? "" : " tempo") },
+          r.status === "ótimo" ? "plano ótimo · provado pelo solver" : "melhor plano encontrado em 20 s"),
+        el("h2", { style: "margin-top:10px" }, "Seu 2027 está pronto")),
+      el("div", { class: "res-acoes" },
+        el("button", { class: "btn sun", type: "button", onclick: copiar }, "Copiar cronograma"),
+        el("button", { class: "btn", type: "button", onclick: () => $("#p1").scrollIntoView({ behavior: "smooth" }) }, "Mudar escolhas")));
+
+    const maxBar = Math.max(tudo.custo, antes ?? 0, r.custo, 1);
+    const barra = (rot, v, cls = "") => el("div", { class: "cbar " + cls },
+      el("div", { class: "rot" }, el("span", {}, rot), el("span", { class: "num" }, v == null ? "não cabe" : brl(v))),
+      el("div", { class: "trilho" }, el("div", { class: "enche", style: `width:0%`, "data-w": v == null ? 0 : (v / maxBar) * 100 })));
+
+    const placar = el("div", { class: "placar" },
+      el("div", { class: "total" },
+        el("small", {}, "você paga em 2027"),
+        el("div", { class: "valor" }, brl(r.custo)),
+        economia > 0.005 ? el("span", { class: "selo" }, `economia de ${brl(economia)} (${Math.round(pct * 100)}%)`) : null,
+        el("div", { class: "mini" },
+          el("div", {}, el("b", {}, brl(r.custo / 12)), el("span", {}, "por mês, em média")),
+          el("div", {}, el("b", {}, horasVistas > 0 ? brl(r.custo / horasVistas) : "–"), el("span", {}, "por hora assistida")),
+          el("div", {}, el("b", {}, `${mesesPagos} de 12`), el("span", {}, "meses com algo pago")))),
+      el("div", { class: "compara" },
+        el("h3", {}, "Comparando com outros jeitos de assinar"),
+        barra("Assinar tudo o ano inteiro", tudo.custo),
+        barra("Ver o quanto antes, sem planejar", antes),
+        barra("Seu plano otimizado", r.custo, "voce"),
+        el("p", {}, "“Assinar tudo” usa, todo mês, a combinação mais barata que dá acesso a todas as plataformas da sua lista. “O quanto antes” põe cada título no primeiro mês em que ele cabe.")));
+
+    let pulados = null;
+    if (r.pulados && r.pulados.length) {
+      const hp = r.pulados.reduce((a, t) => a + t.horas, 0);
+      const longos = r.pulados.filter((t) => t.horas > Math.max(...entrada.horas));
+      pulados = el("div", { class: "pulados" },
+        el("b", {}, `Não coube tudo: ${r.pulados.length} ${r.pulados.length === 1 ? "título ficou" : "títulos ficaram"} de fora (${fmtH(hp)})`),
+        el("p", {}, r.pulados.map((t) => t.nome).join(", ") + "."),
+        el("p", {}, longos.length && !entrada.dividir
+          ? `${longos.map((t) => t.nome).join(", ")} não cabe inteiro em nenhum mês. Ligue “Posso ver uma série em mais de um mês” no passo 3 ou aumente as horas.`
+          : "O plano abaixo vê o máximo de horas possível. Para caber o resto, aumente as horas livres no passo 2 ou ligue “Posso ver uma série em mais de um mês”."));
+    }
+
+    // linha do tempo
+    const linha = el("div", { class: "linha" },
+      el("span", {}), ...NOMES_MESES.map((m) => el("span", { class: "cab" }, m)),
+      ...plats.flatMap((p) => [
+        el("span", { class: "pl" }, el("span", { class: "dot", style: `background:${cor(p).cor}` }), p),
+        ...r.plano.map((mp, i) => {
+          const on = acessoMes[i].has(p);
+          const e = on && i > 0 && acessoMes[i - 1].has(p), d = on && i < 11 && acessoMes[i + 1].has(p);
+          return el("span", { class: "cel" + (on ? " on" : "") + (e ? " grudado-e" : "") + (d ? " grudado-d" : ""),
+            style: on ? `background:${cor(p).cor};animation-delay:${i * 40}ms` : "", title: on ? `${p} em ${MESES_LONGOS[i]}` : "" });
+        }),
+      ]),
+      el("span", { class: "pl", style: "font-weight:600;color:var(--muted)" }, "gasto"),
+      ...r.plano.map((mp) => el("span", { class: "gasto" }, mp.custo > 0 ? mp.custo.toFixed(0) : "–")));
+
+    // ingressos
+    const ingressos = el("div", { class: "ingressos" }, ...r.plano.map((mp, i) => {
+      const m = mp.mes;
+      if (!mp.assistir.length && !mp.ofertas.filter((o) => !o.gratis).length) {
+        return el("article", { class: "ing folga", style: `animation-delay:${i * 35}ms` },
+          el("div", { class: "ing-top" }, el("h3", {}, MESES_LONGOS[i]), el("span", { class: "preco" }, "R$ 0")),
+          el("div", { class: "ing-corpo" }, el("span", { class: "folga-txt" }, "Mês de folga"),
+            el("span", {}, mp.horasLivres > 0 ? `Nada para pagar. Sobram ${fmtH(mp.horasLivres)} para o que você já assina, ou para sair de casa.` : "Nada para pagar.")));
+      }
+      const ofs = el("div", { class: "ofs" }, ...mp.ofertas.map((o) => {
+        const p0 = o.plataformas[0], c = o.combo ? { cor: "linear-gradient(90deg,#E50914,#6A2BF5,#113CCF,#1d1d1f)", tinta: "#fff" } : cor(p0);
+        const antesTem = temOferta(m - 1, o), depoisTem = temOferta(m + 1, o);
+        const acao = o.gratis ? "já é seu" : antesTem && depoisTem ? "mantém" : antesTem ? "cancela no fim do mês" : depoisTem ? "assina dia 1 · mantém" : "assina dia 1 · cancela no fim";
+        return el("div", { class: "of", style: `background:${c.cor};color:${c.tinta}` }, o.nome,
+          o.gratis ? null : el("span", { class: "num", style: "opacity:.9" }, brl(o.preco)), el("span", { class: "acao" }, acao));
+      }));
+      const lista = el("ul", { class: "assistir" }, ...mp.assistir.sort((a, b) => b.horas - a.horas).map((a) => {
+        const chave = `${a.titulo.id}@${m}`;
+        const feito = !!estado.feitos[chave];
+        const li = el("li", { class: feito ? "feito" : "" });
+        const cb = el("input", { type: "checkbox", checked: feito, id: "f-" + chave.replace(/[^a-z0-9]/gi, "-") });
+        cb.addEventListener("change", () => { estado.feitos[chave] = cb.checked; li.classList.toggle("feito", cb.checked); salvar(); });
+        li.append(el("label", {}, cb, el("span", { class: "dot", style: `background:${cor(a.plataforma).cor};margin-top:5px` }),
+          el("span", { class: "t" }, a.titulo.nome + (a.fracao < 0.999 ? ` (${Math.round(a.fracao * 100)}%)` : "")), el("span", { class: "h" }, fmtH(a.horas))));
+        return li;
+      }));
+      const uso = mp.horasLivres > 0 ? Math.min(100, (mp.horasUsadas / mp.horasLivres) * 100) : 0;
+      return el("article", { class: "ing", style: `animation-delay:${i * 35}ms` },
+        el("div", { class: "ing-top" }, el("h3", {}, MESES_LONGOS[i]), el("span", { class: "preco" }, brl(mp.custo))),
+        el("div", { class: "ing-corpo" }, ofs,
+          mp.assistir.length ? lista : el("span", { style: "color:var(--muted);font-size:14px" }, "Nada da sua lista neste mês."),
+          el("div", { class: "uso" }, el("div", { class: "trilho" }, el("div", { style: `width:${uso}%` })),
+            el("span", {}, `${fmtH(mp.horasUsadas)} de ${fmtH(mp.horasLivres)} livres`))));
+    }));
+
+    res.replaceChildren(cabecalho, placar, pulados || "",
+      el("h3", { class: "bloco-t" }, "Quem fica ligado quando", el("small", {}, "cada bloco é um mês de acesso; valores em R$")),
+      el("div", { class: "linha-wrap" }, linha),
+      el("h3", { class: "bloco-t" }, "Mês a mês", el("small", {}, "marque o que já assistiu: fica salvo neste navegador")),
+      ingressos);
+    requestAnimationFrame(() => requestAnimationFrame(() => res.querySelectorAll(".enche").forEach((e) => (e.style.width = e.dataset.w + "%"))));
+
+    // texto para copiar
+    ultimoTexto = [`Meu rodízio de streaming 2027: ${brl(r.custo)} no ano (economia de ${brl(Math.max(0, economia))})`, "",
+      ...r.plano.map((mp, i) => {
+        const pagas = mp.ofertas.filter((o) => !o.gratis);
+        if (!mp.assistir.length && !pagas.length) return `${MESES_LONGOS[i]}: folga (R$ 0)`;
+        return `${MESES_LONGOS[i]} (${brl(mp.custo)}): ${mp.ofertas.map((o) => o.nome).join(" + ") || "nada pago"}\n   ver: ${mp.assistir.map((a) => a.titulo.nome + (a.fracao < 0.999 ? ` (${Math.round(a.fracao * 100)}%)` : "")).join(", ") || "-"}`;
+      })].join("\n");
+    if (!primeiraCarga) res.scrollIntoView({ behavior: "smooth" });
+    primeiraCarga = false;
+  }
+
+  async function copiar() {
+    try { await navigator.clipboard.writeText(ultimoTexto); aviso("Cronograma copiado"); }
+    catch {
+      const ta = el("textarea", { style: "position:fixed;opacity:0" }); ta.value = ultimoTexto; document.body.append(ta); ta.select();
+      try { document.execCommand("copy"); aviso("Cronograma copiado"); } catch { aviso("Não deu para copiar automaticamente"); }
+      ta.remove();
+    }
+  }
+
+  let tAviso;
+  function aviso(t) { const e = $("#toast"); e.textContent = t; e.hidden = false; clearTimeout(tAviso); tAviso = setTimeout(() => (e.hidden = true), 2400); }
+
+  // ------------------------------------------------------------ início
+  let primeiraCarga = true;
+  $("#busca").addEventListener("input", (e) => { busca = e.target.value; desenharGrade(); });
+  $("#usar-projeto").addEventListener("click", () => { estado.selecionados = CATALOGO.filter((t) => t.projeto).map((t) => t.id); salvar(); desenharGrade(); desenharCesta(); desenharBalanco(); aviso("Lista de exemplo carregada: 26 títulos"); });
+  $("#limpar").addEventListener("click", () => { estado.selecionados = []; salvar(); desenharGrade(); desenharCesta(); desenharBalanco(); });
+  $("#aplicar-mesmo").addEventListener("click", () => { const v = parseFloat($("#mesmo").value); if (v >= 0) { estado.horas = Array(12).fill(Math.min(HMAX, Math.round(v))); salvar(); desenharHoras(); desenharBalanco(); } });
+  $("#calcular").addEventListener("click", calcular);
+  $("#calcular-movel").addEventListener("click", calcular);
+
+  desenharFiltros(); desenharGrade(); desenharCesta(); desenharHoras(); desenharBalanco(); prepararForm(); prepararPrefs(); atualizarHero();
+  // abre já com um resultado: a lista atual (de exemplo, na primeira visita)
+  carregarSolver().then(() => calcular(null, true)).catch(() => avisoSolver("não deu para carregar o solver"));
+})();
+</script>
+</body>
+</html>
